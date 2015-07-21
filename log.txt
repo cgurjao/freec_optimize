@@ -1,0 +1,4 @@
+Control-FREEC version 6.3:
+
+bug corrected : misassignemnt of "AA" status to "A" regions.
+option added: [general] printNA = TRUE --- default value is TRUE; useful for exome or targeted sequencing
