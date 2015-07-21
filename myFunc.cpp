@@ -104,6 +104,16 @@ float get_median(const std::vector<float> & myvector) {
   return median_value;
 }
 
+// Calculate sd across individuals around given mean
+// ---------------------------------------------------------------------------
+float get_sd (const std::vector<float>& data, float mean) {
+    double sum = 0;
+	int arrayLength = data.size();
+	for (int i=0; i< arrayLength; i++)
+			sum+=(data[i]-mean)*(data[i]-mean);
+    return (float)sqrt(sum/arrayLength);
+}
+
 // Calculate argmin for a vector for the first smallest value in a range
 // ---------------------------------------------------------------------------
 int argmin(const std::vector<double> & myvector) {
@@ -1172,7 +1182,7 @@ float round_by_ploidy(float value, int ploidy) {
 	return float(int(value*ploidy))/ploidy;
 }
 
-int round(float r) {
+int round_f(float r) {
     return (r > 0.0) ? floor(r + 0.5) : ceil(r - 0.5);
 }
 //int round(double r) {
@@ -1369,7 +1379,7 @@ float runEM (const vector<float>& x,const vector<float>& y,double & a0,double & 
 	return rmserror;
 }
 
-float runEM (const vector<float>& x,const vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept) {
+float runEM (const vector<float>& x,const vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept, float contamination) {
 
 	float rmserror = -1;
 
@@ -1386,7 +1396,7 @@ float runEM (const vector<float>& x,const vector<float>& y,double * a, int degre
 
 		for (int i = 0; i <(int)x.size(); i++) {
 			for (int j = 0; j <= maximalNumberOfCopies; j++)
-				res[j] = fabs(polynomial(x[i],a,float(j)/ploidy,degree)-y[i]);
+				res[j] = fabs(polynomial(x[i],a, ( float(j)*(1-contamination)+2* contamination ) /  (ploidy*(1-contamination)+2*contamination), degree)-y[i]);
 			cluster[i] = get_min_index(res);
 		}
 		int npoints = 0;
@@ -1460,7 +1470,7 @@ float runEM (const vector<float>& x,const vector<float>& y,double * a, int degre
 }
 
 
-float runEMlog (const vector<float>& x,const vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept) {
+float runEMlog (const vector<float>& x,const vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept, float contamination) {
 
 	float rmserror = -1;
 
@@ -1709,9 +1719,9 @@ void getBAFinfo(std::string BAFValuesInTheSegment,float copyNumber,float &estima
         estimatedBAF = 1;
         fittedBAF=NA;
         medianBAFSym="-1";
-        if (round(copyNumber)>=1) {
+        if (round_f(copyNumber)>=1) {
             medianBAFSym="A";
-            for (int i = 1; i<round(copyNumber); i++) {
+            for (int i = 1; i<round_f(copyNumber); i++) {
                     medianBAFSym+="A";
             }
         }
@@ -1738,9 +1748,9 @@ void getBAFinfo(std::string BAFValuesInTheSegment,float copyNumber,float &estima
         uncertainty = NA;
         return;
         medianBAFSym="-1";
-        if (round(copyNumber)>=1) {
+        if (round_f(copyNumber)>=1) {
             medianBAFSym="A";
-            for (int i = 1; i<round(copyNumber); i++) {
+            for (int i = 1; i<round_f(copyNumber); i++) {
                     medianBAFSym+="A";
             }
         }
@@ -1854,7 +1864,7 @@ void getCopyNumbers (float copyNumber, vector <int> & copyNumbers) {
     int highCopy = int(ceil(copyNumber));
     float minDiff = 0.45; minDiff = 0.23; //TODO : external parameter!!
     if (highCopy==1) {
-        copyNumbers.push_back(round(copyNumber));
+        copyNumbers.push_back(round_f(copyNumber));
         return;
     }
     if (copyNumber-lowCopy<minDiff)
@@ -1872,12 +1882,12 @@ void getCopyNumbers (float copyNumber, vector <int> & copyNumbers,int ploidy, bo
     int highCopy = int(ceil(copyNumber));
 
     if (highCopy==1) {
-            copyNumbers.push_back(round(copyNumber));
+            copyNumbers.push_back(round_f(copyNumber));
             return;
 
     }
     if(highCopy==lowCopy){
-            copyNumbers.push_back(round(copyNumber));
+            copyNumbers.push_back(round_f(copyNumber));
             return;
 
     }
@@ -2290,10 +2300,8 @@ bool getSAMinfo(const char* line, std::string &chr1, std::string &chr2, char& or
 
 	char* strs[32];
 	unsigned int strs_cnt = split((char*)line, '\t', strs);
-	if (strs_cnt < 7 )
-        {
+	if (strs_cnt < 7)
         return false;
-        }
 
     chr1 = strs[2];
 	chr2 = strs[6];

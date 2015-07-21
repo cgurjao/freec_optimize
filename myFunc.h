@@ -74,6 +74,7 @@ MateOrientation getMateOrientation(std::string const& matesOrientation);
 InputFormat getInputFormat(std::string const& inputFormat);
 char* getLine(char* buffer, int buffer_size, FILE* stream, std::string& line);
 
+float get_sd (const std::vector<float>& data, float mean);
 float get_median(const std::vector<float>& data) ;
 float get_median(const std::vector<float>& data, int start, int end) ;
 float get_mean(const std::vector<float>& data) ;
@@ -103,11 +104,11 @@ float polynomial(const float x, const double a, const double b, const double c);
 float polynomial(const float x, const double a0, const double a1, const double a2, const double a3);//a0x^3+a1x^2+a2x+a3
 float polynomial(const float x, const double * a, double ratio, int degree); //any degree
 float runEM(const std::vector<float>& x,const std::vector<float>& y,double & a0, double & a1, double & a2,  double & a3,int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies);
-float runEM(const std::vector<float>& x,const std::vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept);
-float runEMlog (const std::vector<float>& x,const std::vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept) ;
+float runEM(const std::vector<float>& x,const std::vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept,float contamination);
+float runEMlog (const std::vector<float>& x,const std::vector<float>& y,double * a, int degree, int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies, bool intercept, float contamination) ;
 
 float runEM_linear(const std::vector<float>& x,const std::vector<float>& y,double & a0, double & a1,int maximalNumberOfIterations,int ploidy, int maximalNumberOfCopies);
-int round(float r);
+int round_f(float r);
 void processChrName(std::string & chr) ;
 size_t strccnt(const char *s, int c);
 void strkeepOnly(char *s, const char *c);

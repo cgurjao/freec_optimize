@@ -20,7 +20,6 @@ http://www.fsf.org/licensing/licenses
 
 
 #include "ChrCopyNumber.h"
-#include <stdlib.h>
 
 using namespace std ;
 
@@ -60,203 +59,60 @@ ChrCopyNumber::ChrCopyNumber(int windowSize, int chrLength, std::string const& c
 	normalContamination_=0;
 }
 
-ChrCopyNumber::ChrCopyNumber(int windowSize, int chrLength, std::string const& chrName, int step, std::string targetBed, int ifTargeted) {
-    windowSize_ = windowSize;
+ChrCopyNumber::ChrCopyNumber(int windowSize, int chrLength, std::string const& chrName, int step) {
+	windowSize_ = windowSize;
 	step_=step;
 	chrLength_ = chrLength;
 	chromosome_ = chrName;
 	isMedianCalculated_ = false;
 	isSmoothed_ = false;
 	ploidy_=NA;
-	if(ifTargeted == 0 || step_ != 0 || windowSize_ != 0)
-    {
-    	if (windowSize == 0) {
-            cerr << "Error: windowSize is set to Zero\n";
-            exit(-1);
-        }
-        length_ = chrLength/step+1;
-        coordinates_ = vector<int>(length_);
-        readCount_ = vector<float>(length_,0);
-        if (step<windowSize) {
-            ends_ = vector<int>(length_,0);
-            for (int i = 0; i<length_; i++) {
-                ends_[i] = i*step+windowSize_-1;
-            }
-        }
+	if (windowSize ==0) {
+        cerr << "Error: windowSize is set to Zero\n";
+        exit(-1);
+	}
+	length_ = chrLength/step+1;
+	coordinates_ = vector<int>(length_);
+	readCount_ = vector<float>(length_,0);
+	if (step<windowSize) {
+        ends_ = vector<int>(length_,0);
         for (int i = 0; i<length_; i++) {
-            coordinates_[i] = i*step;
+            ends_[i] = i*step+windowSize_-1;
         }
-    }
-    else
-    {
-        std::string const& captureFile = targetBed ;
-        ifstream file (captureFile.c_str());
-        if (file.is_open())
-            {
-            cout << "..Reading "<< captureFile << "\n";
-            cout << "..Your file must be in .BED format, and it must be sorted\n";
-            std::string line;
-            exons_Count = 0;
-            exons_Counttmp = 0;
-            while (std::getline(file,line))
-                {
-                    exons_Count++;
-                }
-            chr_namestmp = vector<string>(exons_Count);
-            int l=0;
-            file.clear();
-            file.seekg(0);
-            while (std::getline(file,line))
-                {
-                    int i = 0;
-                    while (line[i] != 'r')
-                        {
-                        i++;
-                        }
-                        i++;
-                    while (line[i] != '\t')
-                        {
-                        chr_namestmp[l] += line[i];
-                        i++;
-                        }
-                        i++;
-                        l++;
-                }
-            file.clear();
-            file.seekg(0);
-            l = 0;
-            while (std::getline(file,line))
-                {
-
-                if (chr_namestmp[l] == chromosome_)
-                    {
-                    exons_Counttmp++;
-                    }
-                    l++;
-                }
-
-            length_ = exons_Counttmp;
-            coordinatesTmp_ = vector<string>(exons_Counttmp);
-            endsTmp_ = vector<string>(exons_Counttmp);
-            genes_names = vector<string>(exons_Counttmp);
-            chr_names= vector<string>(exons_Counttmp);
-
-            l=0;
-            int j = 0;
-            file.clear();
-            file.seekg(0);
-
-            while (std::getline(file,line) && l < exons_Counttmp)
-                {
-                if (chr_namestmp[j] == chromosome_)
-                    {
-                    int i = 0;
-                    while (line[i] != '\t')
-                        {
-                        chr_names[l] += line[i];
-                        i++;
-                        }
-                        i++;
-
-                    while (line[i] != '\t')
-                        {
-                        coordinatesTmp_[l] += line[i];
-                        i++;
-                        }
-                        i++;
-                    while (line[i] != '\t')
-                        {
-                        endsTmp_[l] += line[i];
-                        i++;
-                        }
-                        i++;
-                    while (line[i] != ':')
-                        {
-                        i++;
-                        }
-                        i++;
-                    while (line[i] != ':')
-                        {
-                        i++;
-                        }
-                        i++;
-                    while (line[i] != '\t')
-                        {
-                        genes_names[l] += line[i];
-                        i++;
-                        }
-                        i++;
-                    l++;
-                }
-                    j++;
-                }
-            }
-            else
-            {
-            cerr << "Error: Unable to open file "+captureFile+"\n";
-            exit(-1);
-            }
-        readCount_ = vector<float>(exons_Counttmp,0);
-        coordinates_ = vector<int>(exons_Counttmp);
-        ends_ = vector<int>(exons_Count,0);
-            for (int i = 0; i<exons_Counttmp; i++)
-            {
-            ends_[i] = atoi(endsTmp_[i].c_str()); //Chaque fin d'exons
-            }
-            for (int i = 0; i<exons_Counttmp; i++)
-            {
-            coordinates_[i] = atoi(coordinatesTmp_[i].c_str()); //Chaque début d'exons
-            }
-        cout << "Number of exons analysed in chromosome "<< chromosome_ << " : " << exons_Counttmp << "\n";
-        }
-       normalContamination_=0;
-
+	}
+	for (int i = 0; i<length_; i++) {
+		coordinates_[i] = i*step;
+	}
+	normalContamination_=0;
 }
 
 
-void ChrCopyNumber::mappedPlusOneAtI(int i, int step, int l) {
-        if (windowSize_ !=0)
-            {
-            int pos = i/step;
-            if ((int)readCount_.size()<=pos)
-                {
-                //should not normally happen unless we are at the very end of file
-                cout << "Reaching end of file for chr "<<chromosome_ <<", position " << i <<"\n";
-                //readCount_.resize(pos+1);
-                //length_ = pos+1;
-                }
-            else
-                {
-                readCount_[pos]++;
-                while (step*(pos-1)+windowSize_>i && pos>=1)
-                    {
-                    readCount_[--pos]++;
-                    }
-                }
-            }
-        else
-            {
-            int pos = l;
-            if ((int)readCount_.size()<=pos)
-                {
-                //should not normally happen unless we are at the very end of file
-                cout << "Reaching end of file for chr "<<chromosome_ <<", position " << i <<"\n";
-                //readCount_.resize(pos+1);
-                //length_ = pos+1;
-                }
-            else
-                {
-                readCount_[pos]++;
-                while (step*(pos-1)+windowSize_>i && pos>=1)
-                    {
-                    readCount_[--pos]++;
-                    }
-                }
-            }
+void ChrCopyNumber::mappedPlusOneAtI(int i, int step) {
+    int pos = i/step;
+    if ((int)readCount_.size()<=pos) {
+		//should not normally happen unless we are at the very end of file
+		cout << "Reaching end of file for chr "<<chromosome_ <<", position " << i <<"\n";
+		//readCount_.resize(pos+1);
+		//length_ = pos+1;
+	} else {
+		readCount_[pos]++;
+        while (step*(pos-1)+windowSize_>i && pos>=1) {
+            readCount_[--pos]++;
+        }
+	}
+
+
+    /*
+    int pos = i/windowSize_;
+	if ((int)readCount_.size()<=pos) {
+		readCount_.resize(pos+1);
+		length_ = pos+1;
+	}
+	readCount_[pos]++;
+	*/
 }
 
 void ChrCopyNumber::setValueAt(int i, float val) {
-    //assert(i < readCount_.size());
 	readCount_[i] = val;
 }
 
@@ -331,17 +187,12 @@ std::vector <float> ChrCopyNumber::getValues() {
 
 
 void ChrCopyNumber::removeLowReadCountWindows(ChrCopyNumber control,const int RCThresh) {
-    if (step_ == 0)
-        {
-        length_ = control.exons_Counttmp;
-        }
-    if (length_!=control.getLength() && step_ !=0) {
+    if (length_!=control.getLength()) {
         cerr << "Warning: control length is not equal to the sample length for chromosome " << chromosome_ << "\n";
         return;
     }
     for (int i = 0; i<length_; i++) {
 		if (control.getValueAt(i) < RCThresh){
-            //assert(i < readCount_.size());
 			readCount_[i]=NA;
 			control.setValueAt(i,0);
 		}
@@ -541,7 +392,9 @@ void ChrCopyNumber::recalculateRatio (float constant) {
 void ChrCopyNumber::recalculateRatioWithContam (float contamination, float normGenytype) { //normGenytype==1 if AB, normGenytype==0.5 if A
 	for (int i = 0; i<length_; i++)
 		if (ratio_[i] != NA) {
-			ratio_[i] = (ratio_[i]-contamination*normGenytype)/(1-contamination);
+			//ratio_[i] = (ratio_[i]-contamination*normGenytype)/(1-contamination); //correct only for ploidy 2
+            ratio_[i] = (ratio_[i]*(1-contamination+2*contamination/ploidy_) -contamination*normGenytype/ploidy_*2)/(1-contamination);
+
 			if (ratio_[i]<0)
 				ratio_[i] = 0;
 		}
@@ -1107,15 +960,7 @@ void ChrCopyNumber::deleteFlanks(int telo_centromeric_flanks) {
 }
 
 void ChrCopyNumber::recalcFlanks(int telo_centromeric_flanks, int minNumberOfWindows) {
-    int maxRegionLengthToDelete;
-    if (step_==0)
-        {
-        maxRegionLengthToDelete = int(telo_centromeric_flanks);
-        }
-    else
-        {
-        maxRegionLengthToDelete = int(telo_centromeric_flanks/step_);
-        }
+	int maxRegionLengthToDelete = int(telo_centromeric_flanks/step_);
 	for (int i = 0; i < (int)medianValues_.size(); i++) {
 		if (medianValues_[i]==NA && fragment_lengths_[i]>=minNumberOfWindows) {
 		    int left = i;
@@ -1415,10 +1260,10 @@ int ChrCopyNumber::getEndsSize() {
 ChrCopyNumber::~ChrCopyNumber(void)
 {
 	coordinates_.clear();
-	ends_.clear();
 	readCount_.clear();
 	smoothedProfile_.clear();
 	fragmentNotNA_lengths_.clear(); //TODO all other vectors
+	length_ = 0;
 }
 
 void ChrCopyNumber::createBAF(float value) {

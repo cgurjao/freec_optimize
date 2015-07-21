@@ -20,9 +20,9 @@ public:
 	ChrCopyNumber(void);
 	ChrCopyNumber(std::string const& chrName);
 	ChrCopyNumber(int windowSize, int chrLength, std::string const& chrName);
-	ChrCopyNumber(int windowSize, int chrLength, std::string const& chrName, int step, std::string targetBed = "NA", int ifTargeted =0 );
+	ChrCopyNumber(int windowSize, int chrLength, std::string const& chrName, int step);
 	~ChrCopyNumber(void);
-	void mappedPlusOneAtI(int i, int step, int l = 0);
+	void mappedPlusOneAtI(int i, int step);
 
 	void addBAFinfo(SNPatChr SNPsatChr);
 
@@ -136,14 +136,6 @@ public:
 
 	float getLevelAt (int unsigned i, int ploidy);
 
-	std::vector <int> coordinates_;
-	std::vector <int> ends_;
-	std::vector <std::string> chr_names;
-	std::vector <std::string> genes_names;
-	int exons_Count;
-	int exons_Counttmp;
-	std::vector <float> readCount_;
-
 
 private:
     int ploidy_;
@@ -155,9 +147,9 @@ private:
 	bool isMedianCalculated_;
 	bool isSmoothed_; //medianProfileHasBeenSmoothed
 	std::string chromosome_;
-	std::vector <std::string> coordinatesTmp_;
-	std::vector <std::string> endsTmp_;
-	std::vector <std::string> chr_namestmp;
+	std::vector <int> coordinates_;
+	std::vector <int> ends_;
+	std::vector <float> readCount_;
 	std::vector <float> ratio_;
 	std::vector <int> bpfinal_;
 	std::vector <int> fragmentNotNA_lengths_;
@@ -168,7 +160,7 @@ private:
 	std::vector <float> GCprofile_;//CG-content in a window
 	std::vector <float> notNprofile_;//percentage of not 'N' in a window
 	std::vector <float> mappabilityProfile_;//percentage of mappable positions in a window
-	std::vector <float> smoothedProfile_;//percentage of not 'N' in a window
+	std::vector <float> smoothedProfile_;
     std::vector <float> BAF_; //median value of abs(BAF-0.5) in a window (only for heterozygous SNPs)
     std::vector <float> medianBAFProfile_; //median values of BAF_ for each segment)
     std::vector <std::string> BAFvalues_; // values of abs(BAF-0.5) in a window

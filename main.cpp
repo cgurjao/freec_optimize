@@ -24,7 +24,6 @@ http://www.fsf.org/licensing/licenses
 #include "SVfinder.h"
 #include "GenomeCopyNumber.h"
 #include "version.h"
-#include "Minipileup.h"
 #include <iomanip>
 #include <sstream>
 
@@ -78,7 +77,6 @@ static void thread_init(unsigned int max_threads, unsigned int thread_verbose)
 
 int main(int argc, char *argv[])
 {
-
     print_version();
 
 	const char* conf_file = get_conf_file(argc, argv);
@@ -94,10 +92,6 @@ int main(int argc, char *argv[])
 
 	int minCNAlength = (int)cf.Value("general","minCNAlength", 1);
 	cout << "..Minimal CNA length (in windows) is "<< minCNAlength<< "\n";
-
-    bool makeminipileup = (bool)cf.Value("general", "makeminipileup", "false");
-    bool tryOtherPloidy = (bool)cf.Value("general", "tryOtherPloidy", "false");
-    cerr << tryOtherPloidy;
 
     std::string sex = (std::string)cf.Value("general","sex", "");
 	if (sex.compare("XX") == 0) {
@@ -237,7 +231,7 @@ int main(int argc, char *argv[])
             }
     }
 
-	int minimalTotalLetterCountPerPosition = round(float(cf.Value("BAF","minimalCoveragePerPosition", 0)));
+	int minimalTotalLetterCountPerPosition = round_f(float(cf.Value("BAF","minimalCoveragePerPosition", 0)));
 	if (minimalTotalLetterCountPerPosition>0) {
         cout << "..will use a threshold of "<< minimalTotalLetterCountPerPosition <<" read(s) per SNP position to calculate beta allel frequency (BAF) values\n";
 	}
@@ -459,7 +453,7 @@ int main(int argc, char *argv[])
 
     int ploidy;
     if(cf.hasValue("general","ploidy")){
-        ploidy =round(float(cf.Value("general","ploidy")));
+        ploidy =round_f(float(cf.Value("general","ploidy")));
         cout << "..average ploidy set to "<<ploidy<<"\n";
     } else {
         ploidy = 2;
@@ -523,41 +517,6 @@ int main(int argc, char *argv[])
 		elems.clear();
 	}
 
-   //MAKE MINI PILEUP
-    if (makeminipileup == true)
-        {
-        cout << "..Creating a Pileup file with SNP's in capture regions : \n";
-        Minipileup minipileup;
-        minipileup.makepileup(targetBed, sample_MateFile, sample_inputFormat, sample_mateOrientation, pathToSamtools);
-        cout << "...-> Done!\n";
-        }
-
-    int given_ploidy = ploidy;
-    std::vector <int> ploidies;
-    std::vector <float> rmsscoresT;
-    std::vector <float> rmsscoresC;
-    //TRY OTHER PLOIDY
-    if (tryOtherPloidy == true)
-    {
-        ploidies = vector<int>(4);
-        for (int i = 0; i < 4; i++)
-            {
-            ploidies[i]=(ploidy-1+i);
-            }
-    }
-    else
-    {
-    ploidies = vector<int>(1);
-    ploidies[0] = ploidy;
-    }
-
-rmsscoresT = vector <float>(ploidies.size());
-rmsscoresC = vector <float>(ploidies.size());
-int test_ploidy = 0;
-while (test_ploidy < ploidies.size())
-{
-    ploidy = ploidies[test_ploidy];
-    cerr << "Running Control-FREEC with ploidy set to " << ploidy << "! \n";
     //READ SAMPLE DATA:
 
 	GenomeCopyNumber sampleCopyNumber;
@@ -572,7 +531,6 @@ while (test_ploidy < ploidies.size())
 	ThreadPoolManager* thrPoolManager = ThreadPoolManager::getInstance();
 	ThreadPool* thrPool = NULL;
 	if (has_BAF) {  //read the pileup files only once
-	cerr << "Ca rentre! \n";
 	  GenomeCopyNumberReadMateFileArgWrapper* readMateFileArg;
 
 	  cout << "..will use SNP positions from "<< SNPinfoFile << " to calculate BAF profiles\n";
@@ -611,63 +569,46 @@ while (test_ploidy < ploidies.size())
 	}
 
 
-    if((ifTargeted) && (window == 0) && (step == 0))
-       {
-       cout << "FREEC will work on exome sequencing data! \n";
-       if (has_sample_mateCopyNumberFile) {
-            sampleCopyNumber.readCopyNumber(sample_MateCopyNumberFile);
-       } else {
-            if (!sample_copyNumber_pileup_read && has_window) {
-                    sampleCopyNumber.readCopyNumber(sample_MateFile, sample_inputFormat, sample_mateOrientation,chrLenFile, window, step, targetBed, ifTargeted);
-            } else if (!sample_copyNumber_pileup_read && !has_window) {
-                sampleCopyNumber.readCopyNumber(sample_MateFile, sample_inputFormat, sample_mateOrientation,chrLenFile, coefficientOfVariation);
-            }
-            sampleCopyNumber.printCopyNumber(myName+"_sample.cpn");
-        }
-       }
-       else {
-        if (step != NA) {
-            sampleCopyNumber.setStep(step);
-        }
+	if (step != NA) {
+        sampleCopyNumber.setStep(step);
+	}
 
-        if (has_sample_mateCopyNumberFile) {
-            sampleCopyNumber.readCopyNumber(sample_MateCopyNumberFile);
-            step = sampleCopyNumber.getStep();
-        }  else {
-            if (!sample_copyNumber_pileup_read && has_window) {
-                    sampleCopyNumber.readCopyNumber(sample_MateFile, sample_inputFormat, sample_mateOrientation,chrLenFile, window, step);
-            } else if (!sample_copyNumber_pileup_read && !has_window) {
-                sampleCopyNumber.readCopyNumber(sample_MateFile, sample_inputFormat, sample_mateOrientation,chrLenFile, coefficientOfVariation);
-                step = sampleCopyNumber.getWindowSize(); //in this case step=windowSize
-            }
-            sampleCopyNumber.printCopyNumber(myName+"_sample.cpn");
-        }
-        window = sampleCopyNumber.getWindowSize();
-        cout << "..Window size:\t"<< window << "\n";
-        if (step == NA) {
-            step= window;
-        }
-        has_window = true; //now we know window size and even step!
-        sampleCopyNumber.setSex(sex);
-        }
+	if (has_sample_mateCopyNumberFile) {
+		sampleCopyNumber.readCopyNumber(sample_MateCopyNumberFile);
+		step = sampleCopyNumber.getStep();
+	} else {
+        if (!sample_copyNumber_pileup_read && has_window) {
+				sampleCopyNumber.readCopyNumber(sample_MateFile, sample_inputFormat, sample_mateOrientation,chrLenFile, window, step);
+		} else if (!sample_copyNumber_pileup_read && !has_window) {
+            sampleCopyNumber.readCopyNumber(sample_MateFile, sample_inputFormat, sample_mateOrientation,chrLenFile, coefficientOfVariation);
+            step = sampleCopyNumber.getWindowSize(); //in this case step=windowSize
+		}
+		sampleCopyNumber.printCopyNumber(myName+"_sample.cpn");
+	}
+
+	window = sampleCopyNumber.getWindowSize();
+	cout << "..Window size:\t"<< window << "\n";
+	if (step == NA) {
+        step= window;
+	}
+    has_window = true; //now we know window size and even step!
+	sampleCopyNumber.setSex(sex);
+
 
     //READ CONTROL DATA:
-
-
 if (isControlIsPresent) {
 	if (has_control_mateCopyNumberFile) {
 		controlCopyNumber.readCopyNumber(control_MateCopyNumberFile);
 	} else {
         if (!control_copyNumber_pileup_read ) {
-				  controlCopyNumber.readCopyNumber(control_MateFile, control_inputFormat, control_mateOrientation, chrLenFile, window, step, targetBed, ifTargeted);
+				  controlCopyNumber.readCopyNumber(control_MateFile, control_inputFormat, control_mateOrientation, chrLenFile, window, step );
 		}
       controlCopyNumber.printCopyNumber(controlName+"_control.cpn");
 	}
    controlCopyNumber.setSex(sex);
 }
-
     //if it is a TARGETED resequencing experiment, delete all info outside of the target regions
-	if(ifTargeted && (step != 0 || window != 0)) {
+	if(ifTargeted) {
         cout << "..FREEC will take into account only regions from "<<targetBed<<"\n";
         int minRegion = sampleCopyNumber.focusOnCapture(targetBed);
         if (teloCentroFlanks>minRegion) {
@@ -705,7 +646,7 @@ if (isControlIsPresent) {
 	if (isControlIsPresent && isUseGC) {//then read CG-content and associate it with the control data.
 		cout << "..using GC-content to normalize the control profile\n";
 		controlCopyNumber.readCGprofile(GCprofileFile); //the file with CG-content already exists
-        if (ifTargeted && window != 0) {
+        if (ifTargeted) {
                 controlCopyNumber.focusOnCapture(targetBed); // to mask again averything which is not in the capture
                 sampleCopyNumber.focusOnCapture(targetBed); //TODO: Check whether it is needed. can get here only if "forceGCwhenControlIsPresent>0"
         }
@@ -716,7 +657,11 @@ if (isControlIsPresent) {
 
     //NORMALIZE READ COUNT:
     sampleCopyNumber.setPloidy(ploidy);
+    sampleCopyNumber.setNormalContamination(knownContamination);
+
 	if (isControlIsPresent) {
+        controlCopyNumber.setNormalContamination(0); // normal genome is not contaminated!
+
 		//check if window size is the same for the Control and Sample
 		if (sampleCopyNumber.getWindowSize() != controlCopyNumber.getWindowSize()) {
 			cerr << "\nError: the window length is different for sample and control data\n\tPlease check parameters and input files!\n\n";
@@ -729,7 +674,6 @@ if (isControlIsPresent) {
                 controlCopyNumber.setPloidy(2); // normal genome has ploidy=2!!!
                 cout << "..Set ploidy for the control genome equal to "<< 2 << "\n";
                 sampleCopyNumber.calculateRatioUsingCG(degree, intercept,minExpectedGC,maxExpectedGC);
-                //exit(0);
                 controlCopyNumber.calculateRatioUsingCG(degree, intercept,minExpectedGC,maxExpectedGC);
                 sampleCopyNumber.calculateRatioUsingCG(controlCopyNumber);
             } else if (forceGC==2) {  //calculate the ratio , normalize for GC
@@ -760,6 +704,7 @@ if (isControlIsPresent) {
 		sampleCopyNumber.calculateRatioUsingCG(degree, intercept,minExpectedGC,maxExpectedGC);
 	}
 	cout << "..Copy number profile normalization -> done\n";
+
 	//segmentation:
 
     if (knownContamination>0) {
@@ -770,6 +715,7 @@ if (isControlIsPresent) {
     }
 
 	thrPool = thrPoolManager->newThreadPool("GenomeCopyNumber_calculateBreakpoint");
+
 	GenomeCopyNumberCalculateBreakpointArgWrapper* bkpArg = new GenomeCopyNumberCalculateBreakpointArgWrapper(sampleCopyNumber, breakPointThreshold, breakPointType);
 	thrPool->addThread(GenomeCopyNumber_calculateBreakpoint_wrapper, bkpArg);
 	if (has_BAF && isControlIsPresent) {
@@ -788,6 +734,7 @@ if (isControlIsPresent) {
 	cout << "..annotate copy numbers\n";
 	cout << std::flush;
 	sampleCopyNumber.calculateCopyNumberProbs_and_genomeLength(breakPointType);
+
 	if (contaminationAdjustment && knownContamination==0) {
 	    cout <<"..Evaluating possible contamination..\n";
 		cout << std::flush;
@@ -854,14 +801,6 @@ if (isControlIsPresent) {
             sampleCopyNumber.printRatio(myName+"_ratio.BedGraph",1,printNA);
     }
 	sampleCopyNumber.printCNVs(myName+"_CNVs");
-    test_ploidy++;
-}
 
-cerr << "\n";
-cerr << "Ploidy" << "\t" << "RMStumor" << "\n"; // << "RMS score Control" << "\n";
-for (int  i=0; i < ploidies.size(); i++)
-{
-cerr << ploidies[i] << "\t" << rmsscoresT[i] << "\n"; // << rmsscoresC[i] << "\n";
-}
 	return 0;
 }

@@ -31,17 +31,6 @@ GenomeCopyNumber::GenomeCopyNumber(void)
 	ifUsedControl_ = false;
 	normalContamination_=0;
 	sex_="";
-	longest_Read = 0;
-	exons_Count = 0;
-    windowSize_ = 0;
-	totalNumberOfPairs_ = 0;
-	normalNumberOfPairs_ = 0;
-	refGenomeSize_ = 0;
-	ploidy_pvalue_ = 0;
-	estimationOfGenomeSize_ = 0;
-	telo_centromeric_flanks_ = 0;
-	hasBAF_ = false;
-	ifUsedControl_ = false;
 }
 
 void GenomeCopyNumber::readCopyNumber(std::string const& mateFileName ,std::string const& inputFormat, std::string const& matesOrientation, std::string const& chrLenFileName, float coefficientOfVariation ) {
@@ -62,7 +51,7 @@ void GenomeCopyNumber::readCopyNumber(std::string const& mateFileName ,std::stri
 	}
 	cout << "\t read number:\t" << readNumber << "\n";
 	cout << "\t coefficientOfVariation:\t" << coefficientOfVariation << "\n";
-	windowSize = round(float(1./(coefficientOfVariation*coefficientOfVariation)/readNumber*refGenomeSize_));
+	windowSize = round_f(float(1./(coefficientOfVariation*coefficientOfVariation)/readNumber*refGenomeSize_));
 	cout << "\t evaluated window size:\t" << windowSize << "\n";
 	for (int i = 0; i < (int) names.size(); i++) {
 		ChrCopyNumber chrCopyNumber(windowSize, lengths[i],names[i]);
@@ -72,6 +61,7 @@ void GenomeCopyNumber::readCopyNumber(std::string const& mateFileName ,std::stri
 	//cout << "data structure created";
 	//read mateFileName and calculate copyNumber
 	GenomeCopyNumber::fillMyHash(mateFileName ,inputFormat, matesOrientation, windowSize, windowSize );
+
 }
 
 int GenomeCopyNumber::getWindowSize(void) {
@@ -121,12 +111,12 @@ void GenomeCopyNumber::setBAFtrue() {
     hasBAF_=1;
 }
 
-void GenomeCopyNumber::readCopyNumber(std::string const& mateFileName ,std::string const& inputFormat, std::string const& matesOrientation, std::string const& chrLenFileName, int windowSize , int step, std::string targetBed, int ifTargeted) {
+void GenomeCopyNumber::readCopyNumber(std::string const& mateFileName ,std::string const& inputFormat, std::string const& matesOrientation, std::string const& chrLenFileName, int windowSize , int step) {
 
     if (step == NA)
         step = windowSize;
     //check if steo value is correct:
-    if ((ifTargeted ==0) && (step <= 0 || step > windowSize)) {
+    if (step <= 0 || step > windowSize) {
         cerr << "step  should be a positive interger value less than or equal to the window size\n";
         exit(-1);
     }
@@ -136,28 +126,15 @@ void GenomeCopyNumber::readCopyNumber(std::string const& mateFileName ,std::stri
 	std::vector<int> lengths;
 	readFileWithGenomeInfo(chrLenFileName, names, lengths);
 	refGenomeSize_ = sum(lengths);
-	int exons_Counttmp = 0;
 	for (int i = 0; i < (int) names.size(); i++) {
-		ChrCopyNumber chrCopyNumber(windowSize, lengths[i],names[i], step, targetBed, ifTargeted);
+		ChrCopyNumber chrCopyNumber(windowSize, lengths[i],names[i], step);
         //cout << names[i] << "\t" << i << "\n";
 		chromosomesInd_.insert(pair<string, int> (names[i],i));
 		chrCopyNumber_.push_back(chrCopyNumber);
-		if((ifTargeted) && (windowSize == 0) && (step == 0))
-		{
-            exons_Counttmp = chrCopyNumber.exons_Counttmp;
-            for (int i=0; i < exons_Counttmp; i++)
-            {
-            coordinates_.push_back(chrCopyNumber.coordinates_[i]);
-            ends_.push_back(chrCopyNumber.ends_[i]);
-            chr_names.push_back(chrCopyNumber.chr_names[i]);
-            genes_names.push_back(chrCopyNumber.genes_names[i]);
-            }
-            exons_Count +=exons_Counttmp;
-	    }
 	}
-	//read mateFileName and calculate copyNumber
 
-	GenomeCopyNumber::fillMyHash(mateFileName ,inputFormat, matesOrientation, windowSize, step);
+	//read mateFileName and calculate copyNumber
+	GenomeCopyNumber::fillMyHash(mateFileName ,inputFormat, matesOrientation, windowSize, step );
 }
 
 void GenomeCopyNumber::initCopyNumber(std::string const& chrLenFileName, int windowSize , int step) {
@@ -241,9 +218,8 @@ void GenomeCopyNumber::calculateBAFBreakpoints(double breakPointThreshold, int b
 #endif
 }
 
-void GenomeCopyNumber::fillMyHash(std::string const& mateFileName, std::string const& inputFormat_str, std::string const& matesOrientation_str, int windowSize , int step) {
+void GenomeCopyNumber::fillMyHash(std::string const& mateFileName ,std::string const& inputFormat_str, std::string const& matesOrientation_str, int windowSize , int step) {
 	//read mateFileName and calculate copyNumber
-	int read_Size = 0;
 	long count = 0;
 	long normalCount = 0;
 	cout << "..Starting reading "<< mateFileName << "\n";
@@ -298,12 +274,10 @@ void GenomeCopyNumber::fillMyHash(std::string const& mateFileName, std::string c
 		popen(command.c_str(), "r");
 #endif
 
-		while (((line_buffer = getLine(buffer, MAX_BUFFER, stream, line)) != NULL))
-		 {
+		while ((line_buffer = getLine(buffer, MAX_BUFFER, stream, line)) != NULL) {
 		  count++;
-		  normalCount+=processRead(inputFormat,matesOrientation,line_buffer, read_Size, mateFileName, matesOrientation_str, inputFormat_str);
-         }
-
+		  normalCount+=processRead(inputFormat,matesOrientation,line_buffer);
+		}
         #ifdef _WIN32
 				_pclose(stream);
 		#else
@@ -324,6 +298,7 @@ void GenomeCopyNumber::fillMyHash(std::string const& mateFileName, std::string c
     		}
             fileMates.close();
     }
+
 #ifdef PROFILE_TRACE
 	std::cout << "PROFILING [tid=" << pthread_self() << "]: " << mateFileName << " read in " << (time(NULL)-t0) << " seconds [fillMyHash]\n" << std::flush;
 #endif
@@ -343,6 +318,8 @@ void GenomeCopyNumber::fillMyHash(std::string const& mateFileName, std::string c
                 cerr << "If you use sorted SAM or BAM, please set \"mateOrientation=0\"; then FREEC will not try to detect pairs with normal orientation and insert size. Instead, it will keep all pairs from the input file\n\n";
             }
         }
+
+
         exit(-1);
 	}
 }
@@ -464,7 +441,7 @@ void GenomeCopyNumber::recalculateRatioUsingCG (int degree, bool intercept, floa
         }
 	}
 	int maximalNumberOfIterations = 100;
-    float rmserror = runEM(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept);
+    float rmserror = runEM(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept, normalContamination_);
 	if (rmserror == -1) {
 		cerr << "Error in EM => unable to calculate normalized profile\n";
 		return;
@@ -497,7 +474,7 @@ void GenomeCopyNumber::setAllNormal () {
 	}
 }
 
-float GenomeCopyNumber::calculateRatioUsingCG (int degree, bool intercept, float minExpectedGC, float maxExpectedGC) {
+void GenomeCopyNumber::calculateRatioUsingCG (int degree, bool intercept, float minExpectedGC, float maxExpectedGC) {
 
 	if (degree > MAXDEGREE) {
         cerr << "polynomial degree should be < 10\n";
@@ -534,10 +511,6 @@ float GenomeCopyNumber::calculateRatioUsingCG (int degree, bool intercept, float
 		xy(i,2) = around[i];
 		xy(i,3) = yValues[i]; */
 	}
-
-
-    exit(0);
-
 	linearmodel lm;
 	int info;
 	lrreport ar;
@@ -605,11 +578,12 @@ float GenomeCopyNumber::calculateRatioUsingCG (int degree, bool intercept, float
         }
 	}
 	int maximalNumberOfIterations = 100;
-    float rmserror = runEM(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept);
+    float rmserror = runEM(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept, normalContamination_);
 	if (rmserror == -1) {
 		cerr << "Error in EM => unable to calculate normalized profile\n";
-		return 0 ;
+		return;
 	}
+	cout << "root mean square error = " << rmserror << "\n";
 	if (degree == 3) {
 		cout << "Y = " << a[0] << "*x*x*x+" << a[1] << "*x*x+" << a[2] << "*x+" << a[3] <<"\n";
 	}else if (degree == 2) {
@@ -631,7 +605,6 @@ float GenomeCopyNumber::calculateRatioUsingCG (int degree, bool intercept, float
 	}
     x.clear();
     y.clear();
-    return rmserror;
 }
 
 void GenomeCopyNumber::setPloidy(int ploidy) {
@@ -668,6 +641,29 @@ double GenomeCopyNumber::calculateMedianRatioAround (float interval, float aroun
 	return median;
 }
 
+int GenomeCopyNumber::calculateSDReadCountPerWindow(int mean) {
+    vector <float> myValues;
+	vector<ChrCopyNumber>::iterator it;
+	for ( it=chrCopyNumber_.begin() ; it != chrCopyNumber_.end(); it++ ) {
+		if (! (it->getChromosome().find("X")!=string::npos || it->getChromosome().find("Y")!=string::npos))
+			for (int i = 0; i< it->getLength(); i++) {
+				if (it->getValueAt(i) >0) //non-zero values
+                    myValues.push_back(it->getValueAt(i));
+			}
+	}
+
+    if (myValues.size()==0) {
+            cerr << "Ersqrt(139000)ror: no windows with reads\n";
+            cerr << "Unable to proceed..\n";
+            exit(-1);
+    }
+
+	float sd = get_sd(myValues,mean);
+	myValues.clear();
+	return floor(sd);
+}
+
+
 int GenomeCopyNumber::calculateMedianReadCountPerWindow() {
     vector <float> myValues;
 	vector<ChrCopyNumber>::iterator it;
@@ -678,11 +674,13 @@ int GenomeCopyNumber::calculateMedianReadCountPerWindow() {
                     myValues.push_back(it->getValueAt(i));
 			}
 	}
+
     if (myValues.size()==0) {
             cerr << "Error: no windows with reads\n";
             cerr << "Unable to proceed..\n";
             exit(-1);
     }
+
 	float median = get_median(myValues);
 	myValues.clear();
 	return floor(median);
@@ -766,6 +764,7 @@ double GenomeCopyNumber::calculateMedianAround (GenomeCopyNumber & controlCopyNu
 }
 
 void GenomeCopyNumber::removeLowReadCountWindows(GenomeCopyNumber & controlCopyNumber,int RCThresh) {
+    cout << "..will remove all windows with read count in the control less than "<<RCThresh<<"\n";
 	vector<ChrCopyNumber>::iterator it;
     for ( it=chrCopyNumber_.begin() ; it != chrCopyNumber_.end(); it++ ) {
         it->removeLowReadCountWindows(controlCopyNumber.getChrCopyNumber(it->getChromosome()), RCThresh);
@@ -786,11 +785,11 @@ void GenomeCopyNumber::calculateRatioUsingCG( GenomeCopyNumber & controlCopyNumb
 	}
 }
 
-float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, int degree, bool intercept,bool logLogNorm) {
+void GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, int degree, bool intercept,bool logLogNorm) {
 
     int maximalNumberOfIterations = 300;
     int maximalNumberOfCopies = ploidy_*2;
-    float rmserror;
+
 
 	if(logLogNorm) {
         intercept=1; degree=1;//because it is loglogscale
@@ -815,7 +814,7 @@ float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, in
                 controlcounts.clear();
             }
         }
-        cout << "Initial guess for polynomial ! :\n";
+        cout << "Initial guess for polynomial:\n";
 
         int nvars = degree; //1 if the fit is linear
 		ap::real_2d_array xy;
@@ -864,10 +863,10 @@ float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, in
             cout << a[degree] <<"\n";
         }
 
-        rmserror = runEMlog(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept);
+        float rmserror = runEMlog(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept, normalContamination_);
         if (rmserror == -1) {
             cerr << "Error in EM => unable to calculate normalized profile\n";
-            return 0 ;
+            return;
         }
         cout << "root mean square error = " << rmserror << "\n";
 
@@ -896,17 +895,18 @@ float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, in
 
 	} else {
 
-        cout << "Initial guess for polynomial :\n";
+        cout << "Initial guess for polynomial:\n";
 
         //first guess about parameters
         const int npoints = degree+2;
-        int medianReadCountPerWindowForControl = controlCopyNumber.calculateMedianReadCountPerWindow();
 
+        int medianReadCountPerWindowForControl = controlCopyNumber.calculateMedianReadCountPerWindow();
+        int sdReadCountPerWindowForControl = controlCopyNumber.calculateSDReadCountPerWindow(medianReadCountPerWindowForControl);
 
         double around [MAXDEGREE+2] ;
 
-        double minVal = medianReadCountPerWindowForControl-3*sqrt(double(medianReadCountPerWindowForControl));
-        double maxVal = medianReadCountPerWindowForControl+3*sqrt(double(medianReadCountPerWindowForControl));
+        double minVal = max(medianReadCountPerWindowForControl-3*sdReadCountPerWindowForControl,(int)floor(medianReadCountPerWindowForControl-2*sqrt(medianReadCountPerWindowForControl)));
+        double maxVal = min(medianReadCountPerWindowForControl+3*sdReadCountPerWindowForControl,(int)floor(medianReadCountPerWindowForControl+2*sqrt(medianReadCountPerWindowForControl)));
 
         for (int i = 0; i<npoints; i++) {
             around[i] = minVal + (maxVal-minVal)/(npoints-1)*i;
@@ -925,8 +925,8 @@ float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, in
         }
         if (!valuesAreAllRight){
         //we need to set other values of max and min..
-            minVal = medianReadCountPerWindowForControl-sqrt(double(medianReadCountPerWindowForControl));
-            maxVal = medianReadCountPerWindowForControl+sqrt(double(medianReadCountPerWindowForControl));
+            minVal = max(medianReadCountPerWindowForControl-sdReadCountPerWindowForControl,(int)floor(medianReadCountPerWindowForControl-sqrt(medianReadCountPerWindowForControl)));
+            maxVal = min(medianReadCountPerWindowForControl+sdReadCountPerWindowForControl,(int)floor(medianReadCountPerWindowForControl+sqrt(medianReadCountPerWindowForControl)));
             for (int i = 0; i<npoints; i++) {
                 around[i] = minVal + (maxVal-minVal)/(npoints-1)*i;
             }
@@ -1027,10 +1027,10 @@ float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, in
 	//}
 	//file.close(); exit(0);
 
-        rmserror = runEM(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept);
+        float rmserror = runEM(x,y,a,degree,maximalNumberOfIterations,ploidy_,maximalNumberOfCopies, intercept, normalContamination_);
         if (rmserror == -1) {
             cerr << "Error in EM => unable to calculate normalized profile\n";
-            return 0;
+            return;
         }
         cout << "root mean square error = " << rmserror << "\n";
 
@@ -1062,7 +1062,6 @@ float GenomeCopyNumber::calculateRatio( GenomeCopyNumber & controlCopyNumber, in
 
 
 	}
-	return rmserror;
 
 }
 
@@ -1119,7 +1118,7 @@ void GenomeCopyNumber::printRatio(std::string const& outFile, bool ifBedGraphOut
 
     if (ifBedGraphOutPut==false) {
 
-        file << "Chromosome\tStart\tEnd\tRatio\tMedianRatio\tCopyNumber";
+        file << "Chromosome\tStart\tRatio\tMedianRatio\tCopyNumber";
 
         if (hasBAF_==1){
             file << "\tBAF\testimatedBAF\tGenotype\tUncertaintyOfGT";
@@ -1197,15 +1196,7 @@ void GenomeCopyNumber::calculateCopyNumberProbs_and_genomeLength(int breakPointT
 
 	vector<ChrCopyNumber>::iterator it;
 	unsigned long long count = 0;
-	int min_fragment;
-	if (step_ == 0)
-        {
-        min_fragment = telo_centromeric_flanks_;
-        }
-    else
-        {
-        int min_fragment = telo_centromeric_flanks_/step_;
-        }
+	int min_fragment = telo_centromeric_flanks_/step_;
 	int endsSize=0;
 	string NormalBAF,NormalBAF_XY;
     float normalXYploidy=ploidy_*0.5; //will only use it when the genome is male
@@ -1356,7 +1347,7 @@ void GenomeCopyNumber::calculateCopyNumberProbs_and_genomeLength(int breakPointT
                         level = normalLevel; //should never happen
                 }
 			}
-			int copyNumber = round(level*ploidy_);
+			int copyNumber = round_f(level*ploidy_);
 			//if (copyNumber < 0) //should happen only with "NOCALL"
             //    copyNumber = NA;
 			if (copyNumberProbs_.count(copyNumber) == 0) {
@@ -1371,13 +1362,13 @@ void GenomeCopyNumber::calculateCopyNumberProbs_and_genomeLength(int breakPointT
 
 				if (cnumber == NA) {
 					end = fragmentLength-1;
-					cnumber = round(level*ploidy_);
+					cnumber = round_f(level*ploidy_);
 					lBAF = BAFSym;
                     lUncertainty = BAFUncertainty ;
                     //if (cnumber < 0) //should happen only with "NOCALL"
                     //    cnumber = NA;
 				} else {
-					if (round(level*ploidy_) != cnumber || lBAF.compare(BAFSym)!=0 || lUncertainty != BAFUncertainty) {
+					if (round_f(level*ploidy_) != cnumber || lBAF.compare(BAFSym)!=0 || lUncertainty != BAFUncertainty) {
 					    int realEndOfTheCNV=(end+1)*windowSize_; //check that CNV is not larger than chr size
 					    if (realEndOfTheCNV > it->getChrLength())
                             realEndOfTheCNV=it->getChrLength();
@@ -1413,7 +1404,7 @@ void GenomeCopyNumber::calculateCopyNumberProbs_and_genomeLength(int breakPointT
 
 						start = end+1;
 						end = start+fragmentLength-1;
-						cnumber = round(level*ploidy_);
+						cnumber = round_f(level*ploidy_);
                         lBAF = BAFSym;
                         lUncertainty = BAFUncertainty ;
                         //if (cnumber < 0) //should happen only with "NOCALL"
@@ -1425,13 +1416,13 @@ void GenomeCopyNumber::calculateCopyNumberProbs_and_genomeLength(int breakPointT
 			} else {
 				if (cnumber == NA) {
 					end = fragmentLength-1; //should only once, in the beginning
-					cnumber = round(level*ploidy_);
+					cnumber = round_f(level*ploidy_);
                     lBAF = BAFSym;
                     lUncertainty = BAFUncertainty ;
 					//if (cnumber < 0) //should happen only with "NOCALL"
                     //        cnumber = NA;
 				} else {
-					if (round(level*ploidy_) != cnumber || lBAF.compare(BAFSym)!=0 || lUncertainty != BAFUncertainty) { //save previous value:
+					if (round_f(level*ploidy_) != cnumber || lBAF.compare(BAFSym)!=0 || lUncertainty != BAFUncertainty) { //save previous value:
 						int realLength = it->getEndAtBin(end)-it->getCoordinateAtBin(start)+1;
 						copyNumberProbs_.find(cnumber)->second += realLength;
 						if (cnumber>=0) {
@@ -1478,7 +1469,7 @@ void GenomeCopyNumber::calculateCopyNumberProbs_and_genomeLength(int breakPointT
 
 						start = end+1;
 						end = start+fragmentLength-1;
-						cnumber = round(level*ploidy_);
+						cnumber = round_f(level*ploidy_);
                         lBAF = BAFSym;
                         lUncertainty = BAFUncertainty ;
 						//if (cnumber < 0) //should happen only with "NOCALL"
@@ -1853,7 +1844,7 @@ void GenomeCopyNumber::readCopyNumber(std::string const& inFile) {
 			chrCopyNumber_[(*it).second].setWindowSize(windowSize_);
 			int length = chrCopyNumber_[(*it).second].getValues().size();
 			chrCopyNumber_[(*it).second].setVectorLength(length);
-			chrCopyNumber_[(*it).second].setChrLength(length*windowSize_);
+			chrCopyNumber_[(*it).second].setChrLength(length*step_);
 			chrCopyNumber_[(*it).second].setStep(step_);
 			refGenomeSize_ += chrCopyNumber_[(*it).second].getLength();
 			//cout <<(*it).first <<"\t" <<(*it).second << "\t" <<windowSize_ << "\t" << length << "\t" <<length*windowSize_ << "\n";
@@ -1865,7 +1856,9 @@ void GenomeCopyNumber::readCopyNumber(std::string const& inFile) {
 	    //throw "Unable to open file "+inFile+"\n";
     }
 	totalNumberOfPairs_ = normalNumberOfPairs_;
-	refGenomeSize_ *= windowSize_;
+	if (step_==NA)
+            step_=windowSize_;
+	refGenomeSize_ *= step_;
 	cout << "\t evaluated genome size:\t" << refGenomeSize_ << "\n";
 }
 
@@ -2018,7 +2011,7 @@ void GenomeCopyNumber::printRatioBedGraph(std::string const& chr, std::ofstream 
                 myType="LOH";
             }
             if (myType.compare(typeCNA)==0 && value != NA)
-                file << "chr" <<chrNumber << " "<<position<< " "<< position + windowSize_ << " "<<value*ploidy_<<"\n";
+                file << "chr" <<chrNumber << "\t"<<position<< "\t"<< position + windowSize_ << "\t"<<value*ploidy_<<"\n";
 	}
 }
 
@@ -2034,9 +2027,10 @@ void GenomeCopyNumber::printRatio(std::string const& chr, std::ofstream & file, 
 	int length = chrCopyNumber_[index].getLength();
 	//cout <<length<<" == "<<chrCopyNumber_[index].getValues().size() <<"\n";
 	for (int i = 0; i< length; i++) {
+
         if (printNA || chrCopyNumber_[index].getRatioAtBin(i)!=NA) {//process this this window
 
-            file << chrNumber <<"\t"<<chrCopyNumber_[index].getCoordinateAtBin(i)+1<<"\t" << chrCopyNumber_[index].getEndAtBin(i)<< "\t" <<chrCopyNumber_[index].getRatioAtBin(i) ;
+            file << chrNumber <<"\t"<<chrCopyNumber_[index].getCoordinateAtBin(i)+1<<"\t"<<chrCopyNumber_[index].getRatioAtBin(i) ;
             if (chrCopyNumber_[index].isMedianCalculated()) {
                 file << "\t"<< chrCopyNumber_[index].getMedianProfileAtI(i) ;
                 float valueToPrint;
@@ -2126,35 +2120,14 @@ void GenomeCopyNumber::printCopyNumber(std::string const& chr, std::ofstream & f
 	map<string,ChrCopyNumber>::iterator it;
 	int index = findIndex(chrNumber);
 	if (index == NA) {return;}
-	int length;
-	if (step_ == 0 && windowSize_ == 0)
-        {
-        length = chrCopyNumber_[index].exons_Counttmp;
-        }
-    else
-        {
-        length = chrCopyNumber_[index].getLength();
-        }
-	if (windowSize_ == step_ && step_ != 0) {
+	int length = chrCopyNumber_[index].getLength();
+	if (windowSize_ == step_) {
 		for (int i = 0; i< length; i++)
-            {
-            chrCopyNumber_[index].getValueAt(i);
             file << chrNumber <<"\t"<< chrCopyNumber_[index].getCoordinateAtBin(i) <<"\t"<< chrCopyNumber_[index].getValueAt(i) << "\n";
-            }
-	} else if (step_ != 0)
-    {
+	} else {
         for (int i = 0; i< length; i++)
-            {
             file << chrNumber <<"\t"<< chrCopyNumber_[index].getCoordinateAtBin(i) <<"\t"<< chrCopyNumber_[index].getEndAtBin(i) <<"\t"<< chrCopyNumber_[index].getValueAt(i) << "\n";
-            }
 	}
-    else if (step_==0)
-    {
-    for (int i = 0; i< length; i++)
-            {
-            file << chrNumber <<"\t"<< chrCopyNumber_[index].getCoordinateAtBin(i) <<"\t"<< chrCopyNumber_[index].getEndAtBin(i) <<"\t"<< chrCopyNumber_[index].getValueAt(i) <<"\t"<< chrCopyNumber_[index].genes_names[i]<< "\n";
-            }
-    }
 
 }
 
@@ -2359,7 +2332,7 @@ float GenomeCopyNumber::evaluateContamination () {
 					expected = chrCopyNumber_[index].getSmoothedProfileAtI(i);
 			}
 			if (!(expected == 1 || expected <= 0 || expected >= 2 || observed > 3 || observed <= 0)) {// should it be something related to ploidy_ and not 2
-				float p = (observed-expected)/(1-expected);
+				float p = (observed-expected)/(1-expected+2/ploidy_*(1-observed));
 				if (p>-0.5 && p<1.5) {
                     values.push_back(p);
                     weights.push_back(chrCopyNumber_[index].getFragmentLengths_notNA_At(i));
@@ -2645,8 +2618,13 @@ int GenomeCopyNumber::processRead(std::string const& inputFormat, std::string co
     exit (-1);
 }
 
-int GenomeCopyNumber::processRead(InputFormat inputFormat, MateOrientation matesOrientation, const char* line_buffer, int read_Size, std::string const& mateFileName,std::string const& matesOrientation_str, std::string const& inputFormat_str)
+int GenomeCopyNumber::processRead(InputFormat inputFormat, MateOrientation matesOrientation, const char* line_buffer)
 {
+  /*
+  if (!line.length()) {
+	return 0;
+  }
+  */
   if (!*line_buffer) {
 	return 0;
   }
@@ -2656,226 +2634,9 @@ int GenomeCopyNumber::processRead(InputFormat inputFormat, MateOrientation mates
   if (inputFormat == SAM_INPUT_FORMAT && matesOrientation != SINGLE_END_SORTED_SAM) {
 	if (line_buffer[0] == '@')
 	  return 0;
-
-    char* strs[32];
-    if (step_ == 0)
-        {
-        string chr1, chr2;
-        char orient1, orient2;
-        int left,right;
-        string refname;
-        string samflag;
-        //cerr << "line_buffer : \n" << line_buffer << "\n";
-        int i = 0;
-        int read_Size = 0;
-        while (line_buffer[i] != '\t')
-                        {
-                        refname += line_buffer[i];
-                        i++;
-                        }
-                        i++;
-        while (line_buffer[i] != '\t')
-                        {
-                        samflag += line_buffer[i];
-                        i++;
-                        }
-                        i++;
-        for (int k = 0; k < 13; k++)
-            {
-            while (line_buffer[i] != '\t')
-                        {
-                        i++;
-                        }
-                        i++;
-            k++;
-            }
-
-        while (line_buffer[i] != '\t')
-                        {
-                        read_Size++;
-                        i++;
-                        }
-                        i++;
-
-        if (getSAMinfo(line_buffer,chr1,chr2,orient1,orient2,left,right))
-            {
-            char orient1_2_str[] = {orient1, orient2, 0};
-            char orient2_1_str[] = {orient2, orient1, 0};
-            MateOrientation orient1_2 = getMateOrientation(orient1_2_str);
-            MateOrientation orient2_1 = getMateOrientation(orient2_1_str);
-            std::ifstream fileMates (mateFileName.c_str());
-            vector<float> insertSizeVector;
-            string linemate;
-            if (!fileMates.is_open()) {
-                cerr << "Error: unable to open "+mateFileName+"\n" ;
-                exit(-1);
-            }
-
-        #ifdef PROFILE_TRACE
-            time_t t0 = time(NULL);
-        #endif
-
-            MateOrientation matesOrientation = getMateOrientation(matesOrientation_str);
-            InputFormat inputFormat;
-            char* line_buffermate;
-            FILE *stream2;
-            char buffer[MAX_BUFFER];
-            string command;
-            string myInputFormat=inputFormat_str;
-            if (mateFileName.substr(mateFileName.size()-3,3).compare(".gz")!=0) {
-                    command = pathToSamtools_ + " view "+mateFileName;
-                    myInputFormat="sam";       //will try to use existing samtools
-            }
-            inputFormat = getInputFormat(myInputFormat);
-            stream2 =
-        #ifdef _WIN32
-            _popen(command.c_str(), "r");
-        #else
-            popen(command.c_str(), "r");
-        #endif
-
-            int j = 0;
-            bool noref;
-            while (((line_buffermate = getLine(buffer, MAX_BUFFER, stream2, linemate)) != NULL) && noref==false)
-            {
-            string chr1mate, chr2mate;
-            char orient1mate, orient2mate;
-            int leftmate,rightmate;
-            //cerr << "line_buffer mate : \n"<<line_buffermate << "\n";
-            string refname_mate;
-            string samflag_mate;
-            int read_Size_mate = 0;
-            int i = 0;
-            while (line_buffermate[i] != '\t')
-                            {
-                            refname_mate += line_buffermate[i];
-                            i++;
-                            }
-                            i++;
-            while (line_buffermate[i] != '\t')
-                            {
-                            samflag_mate += line_buffermate[i];
-                            i++;
-                            }
-                            i++;
-
-            for (int k = 0; k < 13; k++)
-            {
-            while (line_buffermate[i] != '\t')
-                        {
-                        i++;
-                        }
-                        i++;
-            k++;
-            }
-
-            while (line_buffermate[i] != '\t')
-                        {
-                        read_Size_mate++;
-                        i++;
-                        }
-                        i++;
-            if (read_Size > longest_Read)
-                {
-                longest_Read = read_Size;
-                }
-            else if (read_Size_mate > longest_Read)
-                {
-                longest_Read= read_Size_mate;
-                }
-            getSAMinfo(line_buffermate,chr1mate,chr2mate,orient1mate,orient2mate,leftmate,rightmate);
-            char orient1_2_strmate[] = {orient1mate, orient2mate, 0};
-            char orient2_1_strmate[] = {orient2mate, orient1mate, 0};
-            MateOrientation orient1_2mate = getMateOrientation(orient1_2_strmate);
-            MateOrientation orient2_1mate = getMateOrientation(orient2_1_strmate);
-
-            if ((refname == refname_mate) && (samflag != samflag_mate))
-                {
-                noref = true;
-                if ((matesOrientation == orient1_2 && right-left>0) || (matesOrientation == orient2_1 && right-left<0))
-                 {
-                    if (chr1 == chr2)
-                        {
-                        int l = 0;
-                        bool leftIsInTheWindow = false;
-                        int right_read = left + read_Size;
-                        string chr = chr1;
-                        processChrName(chr);
-                        int index = findIndex(chr);
-                        chr = "chr" + chr;
-                        if ((left - 1 < chrCopyNumber_[index].ends_[l]) && (left > (chrCopyNumber_[index].coordinates_[l] - longest_Read)))
-                            {
-                                leftIsInTheWindow = true;
-                            }
-                        if ((chrCopyNumber_[index].coordinates_[l] - longest_Read) && (rightmate > chrCopyNumber_[index].coordinates_[l]))
-                            {
-                            valueToReturn = 1;
-                            return valueToReturn;
-                            }
-                        else
-                            {
-                            while ((!((left - 1 < chrCopyNumber_[index].ends_[l]) && (left > (chrCopyNumber_[index].coordinates_[l] - longest_Read))))  && (l <  chrCopyNumber_[index].exons_Counttmp))
-                                {
-                                leftIsInTheWindow = false;
-                                l++;
-                                }
-                            if (l < chrCopyNumber_[index].exons_Counttmp)
-                                {
-                                leftIsInTheWindow = true;
-                                }
-                            else if (l == (chrCopyNumber_[index].exons_Counttmp - 1))
-                                {
-                                leftIsInTheWindow = false;
-                                }
-                            }
-                        if (leftIsInTheWindow == false)
-                            {
-                            valueToReturn = 0;
-                            return valueToReturn;
-                            }
-                        if ((right_read >  chrCopyNumber_[index].coordinates_[l]) && (leftIsInTheWindow == true))
-                            {
-                            step_ = chrCopyNumber_[index].ends_[l] - chrCopyNumber_[index].coordinates_[l] + longest_Read +1;
-                            chrCopyNumber_[index].mappedPlusOneAtI(left,step_, l);
-                            valueToReturn = 1;
-                            step_ = 0;
-                            cerr << "matesOrientation " << matesOrientation << "\n";
-                            cerr << "Left " << left << "\n";
-                            cerr << "Right " << right << "\n";
-                            cerr << "orient1_2 " << orient1_2 << "\n";
-                            cerr << "orient2_1 " << orient2_1 << "\n";
-                            cerr << "orient1_2_str " << orient1_2_str << "\n";
-                            cerr << "orient2_1_str " << orient2_1_str << "\n";
-                            cerr << "chr1 " << chr1 << "\n";
-                            cerr << "chr2 " << chr2 << "\n";
-                            cerr << "read_Size " << read_Size << "\n";
-                            cerr << "Left mate " << leftmate << "\n";
-                            cerr << "Right mate " << rightmate << "\n";
-                            cerr << "orient1_2mate " << orient1_2mate << "\n";
-                            cerr << "orient2_1mate " << orient2_1mate << "\n";
-                            cerr << "orient1_2mate_str " << orient1_2_strmate << "\n";
-                            cerr << "orient2_1mate_str " << orient2_1_strmate << "\n";
-                            cerr << "chr1mate " << chr1mate << "\n";
-                            cerr << "chr2mate " << chr2mate << "\n";
-                            cerr << "read_Size_mate " << read_Size_mate << "\n";
-                            cerr << "\n \n \n DONE \n \n \n";
-                            }
-                        if (right_read < chrCopyNumber_[index].coordinates_[l])
-                            {
-                            valueToReturn = 0;
-                            return valueToReturn;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-	else
-	{
 	string chr1, chr2;
 	char orient1, orient2;
-	int left,right;
+	int left,right ;
 	if (getSAMinfo(line_buffer,chr1,chr2,orient1,orient2,left,right)) {
 	  char orient1_2_str[] = {orient1, orient2, 0};
 	  char orient2_1_str[] = {orient2, orient1, 0};
@@ -2889,13 +2650,10 @@ int GenomeCopyNumber::processRead(InputFormat inputFormat, MateOrientation mates
 		}
 	  }
 	}
-	}
 	return valueToReturn;
-  }
   }
 
   if (inputFormat == SAM_INPUT_FORMAT && matesOrientation == SINGLE_END_SORTED_SAM)  {
-
 	if (line_buffer[0] == '@')
 	  return 0;
 
@@ -2904,71 +2662,14 @@ int GenomeCopyNumber::processRead(InputFormat inputFormat, MateOrientation mates
 	char* strs[32];
 	unsigned int strs_cnt = split((char*)line_buffer, '\t', strs);
 	if (strs_cnt > 3) {
-      string sequence = strs[9];
-      int read_Size = sequence.size();
-      if (read_Size > longest_Read)
-        {
-        longest_Read = read_Size;
-        }
 	  string chr = strs[2];
 	  processChrName(chr);
-	  int index = findIndex(chr);
-	  chr = "chr" + chr;
-      int l = 0;
 	  if (chr.compare("*")!=0 ) {
 		int left = atoi(strs[3]);
+		int index = findIndex(chr);
 		if (index!=NA) {
-        if (step_ == 0)
-		    {
-            int right = left + read_Size;
-            bool leftIsInTheWindow = false;
-            if ((left - 1 < chrCopyNumber_[index].ends_[l]) && (left > (chrCopyNumber_[index].coordinates_[l] - longest_Read)))
-                {
-                    leftIsInTheWindow = true;
-                }
-            else
-                {
-                while ((!((left - 1 < chrCopyNumber_[index].ends_[l]) && (left > (chrCopyNumber_[index].coordinates_[l] - longest_Read))))  && (l <  chrCopyNumber_[index].exons_Counttmp))
-                    {
-                    leftIsInTheWindow = false;
-                    l++;
-                    }
-                if (l < chrCopyNumber_[index].exons_Counttmp)
-                 {
-                    leftIsInTheWindow = true;
-                    }
-                else if (l == (chrCopyNumber_[index].exons_Counttmp - 1))
-                    {
-                    leftIsInTheWindow = false;
-                    }
-                }
-            if (leftIsInTheWindow == false)
-                {
-                valueToReturn = 0;
-                return valueToReturn;
-                }
-            if ((right >  chrCopyNumber_[index].coordinates_[l]) && (leftIsInTheWindow == true))
-                {
-                step_ = chrCopyNumber_[index].ends_[l] - chrCopyNumber_[index].coordinates_[l] + longest_Read +1;
-                chrCopyNumber_[index].mappedPlusOneAtI(left,step_, l);
-                valueToReturn = 1;
-                step_ = 0;
-                /*if (chr == "chr2")
-                    {
-                    cerr << chr << "\t" << chrCopyNumber_[index].chr_names[l] << "\t" << index << "\t" << l << "\n";
-                    }*/
-                }
-            if (right < chrCopyNumber_[index].coordinates_[l])
-                {
-                valueToReturn = 0;
-                return valueToReturn;
-                }
-		    }
-        else
-		    {
-            chrCopyNumber_[index].mappedPlusOneAtI(left,step_);
-            valueToReturn=1;
-            }
+		  chrCopyNumber_[index].mappedPlusOneAtI(left,step_);
+		  valueToReturn=1;
 		}
 	  }
 	}
@@ -2988,7 +2689,6 @@ int GenomeCopyNumber::processRead(InputFormat inputFormat, MateOrientation mates
 		if (ind!=NA) {
 		  chrCopyNumber_[ind].mappedPlusOneAtI(min(left,right), step_);
 		  valueToReturn= 1;
-
 		}
 	  }
 	}

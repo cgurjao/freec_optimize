@@ -11,7 +11,7 @@ See subroutines comments for additional copyrights.
 >>> SOURCE LICENSE >>>
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation (www.fsf.org); either version 2 of the 
+the Free Software Foundation (www.fsf.org); either version 2 of the
 License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -68,7 +68,7 @@ double gamma(double x)
         if( ap::fp_less(x,0.0) )
         {
             p = ap::ifloor(q);
-            i = ap::round(p);
+            i = ap::round_f(p);
             if( i%2==0 )
             {
                 sgngam = -1;
@@ -203,7 +203,7 @@ double lngamma(double x, double& sgngam)
         q = -x;
         w = lngamma(q, tmp);
         p = ap::ifloor(q);
-        i = ap::round(p);
+        i = ap::round_f(p);
         if( i%2==0 )
         {
             sgngam = -1;

@@ -4,7 +4,7 @@ Copyright (c) 2007-2008, Sergey Bochkanov (ALGLIB project).
 >>> SOURCE LICENSE >>>
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation (www.fsf.org); either version 2 of the 
+the Free Software Foundation (www.fsf.org); either version 2 of the
 License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -152,7 +152,7 @@ void lrbuilds(const ap::real_2d_array& xy,
     double skewness;
     double kurtosis;
 
-    
+
     //
     // Test parameters
     //
@@ -161,7 +161,7 @@ void lrbuilds(const ap::real_2d_array& xy,
         info = -1;
         return;
     }
-    
+
     //
     // Copy data, add one more column (constant term)
     //
@@ -172,7 +172,7 @@ void lrbuilds(const ap::real_2d_array& xy,
         xyi(i,nvars) = 1;
         xyi(i,nvars+1) = xy(i,nvars);
     }
-    
+
     //
     // Standartization
     //
@@ -194,7 +194,7 @@ void lrbuilds(const ap::real_2d_array& xy,
             xyi(i,j) = (xyi(i,j)-means(j))/sigmas(j);
         }
     }
-    
+
     //
     // Internal processing
     //
@@ -203,14 +203,14 @@ void lrbuilds(const ap::real_2d_array& xy,
     {
         return;
     }
-    
+
     //
     // Un-standartization
     //
-    offs = ap::round(lm.w(3));
+    offs = ap::round_f(lm.w(3));
     for(j = 0; j <= nvars-1; j++)
     {
-        
+
         //
         // Constant term is updated (and its covariance too,
         // since it gets some variance from J-th component)
@@ -219,7 +219,7 @@ void lrbuilds(const ap::real_2d_array& xy,
         v = means(j)/sigmas(j);
         ap::vsub(&ar.c(nvars, 0), 1, &ar.c(j, 0), 1, ap::vlen(0,nvars), v);
         ap::vsub(&ar.c(0, nvars), ar.c.getstride(), &ar.c(0, j), ar.c.getstride(), ap::vlen(0,nvars), v);
-        
+
         //
         // J-th term is updated
         //
@@ -261,7 +261,7 @@ void lrbuildzs(const ap::real_2d_array& xy,
     double skewness;
     double kurtosis;
 
-    
+
     //
     // Test parameters
     //
@@ -270,7 +270,7 @@ void lrbuildzs(const ap::real_2d_array& xy,
         info = -1;
         return;
     }
-    
+
     //
     // Copy data, add one more column (constant term)
     //
@@ -281,7 +281,7 @@ void lrbuildzs(const ap::real_2d_array& xy,
         xyi(i,nvars) = 0;
         xyi(i,nvars+1) = xy(i,nvars);
     }
-    
+
     //
     // Standartization: unusual scaling
     //
@@ -293,7 +293,7 @@ void lrbuildzs(const ap::real_2d_array& xy,
         calculatemoments(x, npoints, mean, variance, skewness, kurtosis);
         if( ap::fp_greater(fabs(mean),sqrt(variance)) )
         {
-            
+
             //
             // variation is relatively small, it is better to
             // bring mean value to 1
@@ -302,7 +302,7 @@ void lrbuildzs(const ap::real_2d_array& xy,
         }
         else
         {
-            
+
             //
             // variation is large, it is better to bring variance to 1
             //
@@ -317,7 +317,7 @@ void lrbuildzs(const ap::real_2d_array& xy,
             xyi(i,j) = xyi(i,j)/c(j);
         }
     }
-    
+
     //
     // Internal processing
     //
@@ -326,14 +326,14 @@ void lrbuildzs(const ap::real_2d_array& xy,
     {
         return;
     }
-    
+
     //
     // Un-standartization
     //
-    offs = ap::round(lm.w(3));
+    offs = ap::round_f(lm.w(3));
     for(j = 0; j <= nvars-1; j++)
     {
-        
+
         //
         // J-th term is updated
         //
@@ -407,9 +407,9 @@ void lrunpack(const linearmodel& lm, ap::real_1d_array& v, int& nvars)
 {
     int offs;
 
-    ap::ap_error::make_assertion(ap::round(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
-    nvars = ap::round(lm.w(2));
-    offs = ap::round(lm.w(3));
+    ap::ap_error::make_assertion(ap::round_f(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
+    nvars = ap::round_f(lm.w(2));
+    offs = ap::round_f(lm.w(3));
     v.setbounds(0, nvars);
     ap::vmove(&v(0), 1, &lm.w(offs), 1, ap::vlen(0,nvars));
 }
@@ -463,9 +463,9 @@ double lrprocess(const linearmodel& lm, const ap::real_1d_array& x)
     int offs;
     int nvars;
 
-    ap::ap_error::make_assertion(ap::round(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
-    nvars = ap::round(lm.w(2));
-    offs = ap::round(lm.w(3));
+    ap::ap_error::make_assertion(ap::round_f(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
+    nvars = ap::round_f(lm.w(2));
+    offs = ap::round_f(lm.w(3));
     v = ap::vdotproduct(&x(0), 1, &lm.w(offs), 1, ap::vlen(0,nvars-1));
     result = v+lm.w(offs+nvars);
     return result;
@@ -496,9 +496,9 @@ double lrrmserror(const linearmodel& lm,
     int offs;
     int nvars;
 
-    ap::ap_error::make_assertion(ap::round(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
-    nvars = ap::round(lm.w(2));
-    offs = ap::round(lm.w(3));
+    ap::ap_error::make_assertion(ap::round_f(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
+    nvars = ap::round_f(lm.w(2));
+    offs = ap::round_f(lm.w(3));
     result = 0;
     for(i = 0; i <= npoints-1; i++)
     {
@@ -535,9 +535,9 @@ double lravgerror(const linearmodel& lm,
     int offs;
     int nvars;
 
-    ap::ap_error::make_assertion(ap::round(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
-    nvars = ap::round(lm.w(2));
-    offs = ap::round(lm.w(3));
+    ap::ap_error::make_assertion(ap::round_f(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
+    nvars = ap::round_f(lm.w(2));
+    offs = ap::round_f(lm.w(3));
     result = 0;
     for(i = 0; i <= npoints-1; i++)
     {
@@ -575,9 +575,9 @@ double lravgrelerror(const linearmodel& lm,
     int offs;
     int nvars;
 
-    ap::ap_error::make_assertion(ap::round(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
-    nvars = ap::round(lm.w(2));
-    offs = ap::round(lm.w(3));
+    ap::ap_error::make_assertion(ap::round_f(lm.w(1))==lrvnum, "LINREG: Incorrect LINREG version!");
+    nvars = ap::round_f(lm.w(2));
+    offs = ap::round_f(lm.w(3));
     result = 0;
     k = 0;
     for(i = 0; i <= npoints-1; i++)
@@ -614,7 +614,7 @@ void lrcopy(const linearmodel& lm1, linearmodel& lm2)
 {
     int k;
 
-    k = ap::round(lm1.w(0));
+    k = ap::round_f(lm1.w(0));
     lm2.w.setbounds(0, k-1);
     ap::vmove(&lm2.w(0), 1, &lm1.w(0), 1, ap::vlen(0,k-1));
 }
@@ -637,7 +637,7 @@ OUTPUT PARAMETERS:
 void lrserialize(const linearmodel& lm, ap::real_1d_array& ra, int& rlen)
 {
 
-    rlen = ap::round(lm.w(0))+1;
+    rlen = ap::round_f(lm.w(0))+1;
     ra.setbounds(0, rlen-1);
     ra(0) = lrvnum;
     ap::vmove(&ra(1), 1, &lm.w(0), 1, ap::vlen(1,rlen-1));
@@ -659,9 +659,9 @@ OUTPUT PARAMETERS:
 void lrunserialize(const ap::real_1d_array& ra, linearmodel& lm)
 {
 
-    ap::ap_error::make_assertion(ap::round(ra(0))==lrvnum, "LRUnserialize: incorrect array!");
-    lm.w.setbounds(0, ap::round(ra(1))-1);
-    ap::vmove(&lm.w(0), 1, &ra(1), 1, ap::vlen(0,ap::round(ra(1))-1));
+    ap::ap_error::make_assertion(ap::round_f(ra(0))==lrvnum, "LRUnserialize: incorrect array!");
+    lm.w.setbounds(0, ap::round_f(ra(1))-1);
+    ap::vmove(&lm.w(0), 1, &ra(1), 1, ap::vlen(0,ap::round_f(ra(1))-1));
 }
 
 
@@ -702,7 +702,7 @@ void lrlines(const ap::real_2d_array& xy,
         }
     }
     info = 1;
-    
+
     //
     // Calculate S, SX, SY, SXX
     //
@@ -718,7 +718,7 @@ void lrlines(const ap::real_2d_array& xy,
         sy = sy+xy(i,1)/t;
         sxx = sxx+ap::sqr(xy(i,0))/t;
     }
-    
+
     //
     // Test for condition number
     //
@@ -730,7 +730,7 @@ void lrlines(const ap::real_2d_array& xy,
         info = -3;
         return;
     }
-    
+
     //
     // Calculate A, B
     //
@@ -745,7 +745,7 @@ void lrlines(const ap::real_2d_array& xy,
     }
     b = b/stt;
     a = (sy-sx*b)/ss;
-    
+
     //
     // Calculate goodness-of-fit
     //
@@ -762,7 +762,7 @@ void lrlines(const ap::real_2d_array& xy,
     {
         p = 1;
     }
-    
+
     //
     // Calculate other parameters
     //
@@ -836,7 +836,7 @@ static void lrinternal(const ap::real_2d_array& xy,
     linearmodel tlm;
 
     epstol = 1000;
-    
+
     //
     // Check for errors in data
     //
@@ -854,7 +854,7 @@ static void lrinternal(const ap::real_2d_array& xy,
         }
     }
     info = 1;
-    
+
     //
     // Create design matrix
     //
@@ -866,7 +866,7 @@ static void lrinternal(const ap::real_2d_array& xy,
         ap::vmove(&a(i, 0), 1, &xy(i, 0), 1, ap::vlen(0,nvars-1), r);
         b(i) = xy(i,nvars)/s(i);
     }
-    
+
     //
     // Allocate W:
     // W[0]     array size
@@ -880,7 +880,7 @@ static void lrinternal(const ap::real_2d_array& xy,
     lm.w(1) = lrvnum;
     lm.w(2) = nvars-1;
     lm.w(3) = offs;
-    
+
     //
     // Solve problem using SVD:
     //
@@ -903,7 +903,7 @@ static void lrinternal(const ap::real_2d_array& xy,
     }
     if( ap::fp_less_eq(sv(0),0) )
     {
-        
+
         //
         // Degenerate case: zero design matrix.
         //
@@ -931,7 +931,7 @@ static void lrinternal(const ap::real_2d_array& xy,
     }
     if( ap::fp_less_eq(sv(nvars-1),epstol*ap::machineepsilon*sv(0)) )
     {
-        
+
         //
         // Degenerate case, non-zero design matrix.
         //
@@ -944,7 +944,7 @@ static void lrinternal(const ap::real_2d_array& xy,
         {
             if( ap::fp_greater(sv(k-1),epstol*ap::machineepsilon*sv(0)) )
             {
-                
+
                 //
                 // Reduce
                 //
@@ -958,7 +958,7 @@ static void lrinternal(const ap::real_2d_array& xy,
                     }
                     xym(i,k) = xy(i,nvars);
                 }
-                
+
                 //
                 // Solve
                 //
@@ -967,7 +967,7 @@ static void lrinternal(const ap::real_2d_array& xy,
                 {
                     return;
                 }
-                
+
                 //
                 // Convert back to un-reduced format
                 //
@@ -1045,7 +1045,7 @@ static void lrinternal(const ap::real_2d_array& xy,
             ar.c(j,i) = r;
         }
     }
-    
+
     //
     // Leave-1-out cross-validation error.
     //
@@ -1097,7 +1097,7 @@ static void lrinternal(const ap::real_2d_array& xy,
     ar.cvdefects.setbounds(0, nvars-1);
     for(i = 0; i <= npoints-1; i++)
     {
-        
+
         //
         // Error on a training set
         //
@@ -1109,7 +1109,7 @@ static void lrinternal(const ap::real_2d_array& xy,
             ar.avgrelerror = ar.avgrelerror+fabs((r-xy(i,nvars))/xy(i,nvars));
             na = na+1;
         }
-        
+
         //
         // Error using fast leave-one-out cross-validation
         //
@@ -1132,7 +1132,7 @@ static void lrinternal(const ap::real_2d_array& xy,
     }
     if( ncv==0 )
     {
-        
+
         //
         // Something strange: ALL ui are degenerate.
         // Unexpected...

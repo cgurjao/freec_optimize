@@ -586,7 +586,7 @@ public:
         else
             return const_raw_vector<T>(&((*this)(iRow, iColumnStart)), iColumnEnd-iColumnStart+1, 1);
     };
-	
+
 	int getstride() const
     {
         return m_iLinearMember;
@@ -674,7 +674,7 @@ extern const double minrealnumber;
 int sign(double x);
 double randomreal();
 int randominteger(int maxv);
-int round(double x);
+int round_f(double x);
 int trunc(double x);
 int ifloor(double x);
 int iceil(double x);

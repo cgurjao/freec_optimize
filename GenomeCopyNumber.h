@@ -26,13 +26,13 @@ public:
 	GenomeCopyNumber(void);
 	~GenomeCopyNumber(void);
 
-	void readCopyNumber(std::string const& mateFileName ,std::string const& inputFormat, std::string const& matesOrientation, std::string const& chrLenFileName, int windowSize, int step, std::string targetBed = "NA",  int ifTargeted =0);
+	void readCopyNumber(std::string const& mateFileName ,std::string const& inputFormat, std::string const& matesOrientation, std::string const& chrLenFileName, int windowSize, int step );
 	void readCopyNumber(std::string const& mateFileName ,std::string const& inputFormat, std::string const& matesOrientation, std::string const& chrLenFileName, float coefficientOfVariation );
 	void readCopyNumber(std::string const& inFile);
 	int readCGprofile(std::string const& inFile);
 	void readGemMappabilityFile(std::string const& inFile);
 	int processRead(std::string const& inputFormat, std::string const& matesOrientation,std::string const line);
-    int processRead(InputFormat inputFormat, MateOrientation matesOrientation, const char* line_buffer, int read_Size = 0, std::string const& mateFileName = "NA", std::string const& matesOrientation_str = "NA", std::string const& inputFormat_str = "NA");
+    int processRead(InputFormat inputFormat, MateOrientation matesOrientation, const char* line_buffer);
 	int processReadWithBowtie(std::string const& inputFormat, std::string const& matesOrientation,std::string const line,std::string const line2);
     int focusOnCapture (std::string const& captureFile);
 	void initCopyNumber(std::string const& chrLenFileName, int windowSize , int step);
@@ -41,7 +41,7 @@ public:
     void removeLowReadCountWindows(GenomeCopyNumber & controlCopyNumber, int RCThresh);
 
 
-	float calculateRatio( GenomeCopyNumber & controlCopyNumber, int degree, bool intercept,bool logLogNorm) ;
+	void calculateRatio( GenomeCopyNumber & controlCopyNumber, int degree, bool intercept,bool logLogNorm) ;
     void calculateRatioUsingCG( GenomeCopyNumber & controlCopyNumber) ;
 	float calculateNormalizationConstant(GenomeCopyNumber & controlCopyNumber);
 	void calculateBreakpoints(double breakPointThreshold, int breakPointType);
@@ -54,7 +54,8 @@ public:
 	void calculateCopyNumberProbs_and_genomeLength(int breakPointType) ;
 	void deleteFlanks(int telo_centromeric_flanks);
 	void recalcFlanks(int telo_centromeric_flanks, int minNumberOfWindows);
-	float calculateRatioUsingCG (int degree, bool intercept, float minExpectedGC, float maxExpectedGC) ;
+	void calculateRatioUsingCG (int degree, bool intercept, float minExpectedGC, float maxExpectedGC) ;
+
     void recalculateRatioUsingCG (int degree, bool intercept, float minExpectedGC, float maxExpectedGC) ;
 	void recalculateRatio (float contamination);
 	void calculateCopyNumberMedians (int minCNAlength, bool noisyData);
@@ -62,6 +63,7 @@ public:
     double calculateMedianAround (float interval, float around);
     void calculateSomaticCNVs (std::vector <EntryCNV> controlCNVs, int controlPloidy);
     int calculateMedianReadCountPerWindow();
+    int calculateSDReadCountPerWindow(int mean);
 
 	double calculateMedianAround (GenomeCopyNumber & controlCopyNumber, float interval, float around);
 	float evaluateContamination();
@@ -108,25 +110,18 @@ public:
 
 	ChrCopyNumber& getChrCopyNumberAt(int index) {return chrCopyNumber_[index];}
 	int getStep() const {return step_;}
-
 private:
 	std::vector<ChrCopyNumber> chrCopyNumber_;
 	std::map<std::string, int> chromosomesInd_;
 	void fillMyHash(std::string const& mateFileName , std::string const& inputFormat, std::string const& matesOrientation, int windowSize, int step );
 	int windowSize_;
 	int step_;
-	int longest_Read;
 	long totalNumberOfPairs_;
 	long normalNumberOfPairs_;
 	double refGenomeSize_;
 	int ploidy_;
 	double ploidy_pvalue_;
 	double estimationOfGenomeSize_;
-	std::vector <int> coordinates_;
-	std::vector <int> ends_;
-	std::vector <std::string> chr_names;
-	std::vector <std::string> genes_names;
-	int exons_Count;
 	std::map<int, double> copyNumberProbs_;
 	int telo_centromeric_flanks_;
 	std::vector <EntryCNV> CNVs_;

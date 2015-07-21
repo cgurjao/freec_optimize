@@ -130,7 +130,7 @@ const double ap::abscomplex(const ap::complex &z)
     xabs = fabs(z.x);
     yabs = fabs(z.y);
     w = xabs>yabs ? xabs : yabs;
-    v = xabs<yabs ? xabs : yabs; 
+    v = xabs<yabs ? xabs : yabs;
     if( v==0 )
         return w;
     else
@@ -1032,7 +1032,7 @@ double ap::randomreal()
 int ap::randominteger(int maxv)
 {  return rand()%maxv; }
 
-int ap::round(double x)
+int ap::round_f(double x)
 { return int(floor(x+0.5)); }
 
 int ap::trunc(double x)
@@ -1141,7 +1141,7 @@ bool ap::readstrings(std::string file, std::list<std::string> *pOutput, std::str
         // TODO: read file by small chunks, combine in one large string
         if( strlen(str)==0 )
             continue;
-            
+
         //
         // trim trailing newline chars
         //
@@ -1351,7 +1351,7 @@ bool ap::opendataset(std::string file, dataset *pdataset)
     ValLast = ValFirst + pdataset->valsize;
     TstFirst = ValLast;
     TstLast = TstFirst + pdataset->tstsize;
-                
+
     //
     // columns
     //
